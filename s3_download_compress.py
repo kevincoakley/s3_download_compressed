@@ -63,7 +63,7 @@ if __name__ == "__main__":
         s3_object_path = "%s%s" % (s3_root, s3_object_name)
 
         # Generate the local filename from the S3 object name and the working directory
-        filename = "%s.gz" % count
+        filename = "%s.gz" % s3_object_name
         save_path = "%s%s" % (working_directory, filename)
 
         # Only try to download the S3 object if it doesn't exist on the local computer
