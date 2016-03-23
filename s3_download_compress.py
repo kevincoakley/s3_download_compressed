@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import gzip
 import boto3
 import os.path
