@@ -13,15 +13,23 @@ working_directory = "/save/"
 
 
 def worker(object_filename):
+
+    local_path = "%s%s" % (working_directory, object_filename)
+
     swift = swiftclient.client.Connection(auth_version='2',
                                           user=os_username,
                                           key=os_password,
                                           tenant_name=os_tenant_name,
                                           authurl=os_auth_url)
-    with open("%s%s" % (working_directory, object_filename), 'rb') as fo:
+    with open(local_path, 'rb') as fo:
         file_data = fo.read()
     swift.put_object('twitter', object_filename, file_data)
     print "%s uploaded to swift!" % object_filename
+
+    # Remove the file once uploaded to Swift and create a empty file in its place
+    os.remove(local_path)
+    open(local_path, 'a').close()
+
 
 if __name__ == "__main__":
 
