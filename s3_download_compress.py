@@ -92,8 +92,8 @@ if __name__ == "__main__":
         filename = "%s.gz" % s3_object_name
         save_path = "%s%s" % (working_directory, filename)
 
-        # Only try to download the S3 object if it doesn't exist on the local computer or in Swift
-        if not os.path.exists(save_path) or not s3_object_exists(filename):
+        # Only try to download the S3 object if it doesn't exist on the local computer and in Swift
+        if not os.path.exists(save_path) and not swift_object_exists(filename):
 
             # Check if the object exists in S3 before trying to download it
             if s3_object_exists(s3_object_path):
