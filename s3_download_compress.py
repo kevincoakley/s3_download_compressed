@@ -1,34 +1,63 @@
 import gzip
 import boto3
 import os.path
+import threading
+import swiftclient.client
 
-count = 1
+os_tenant_name = os.environ.get("OS_TENANT_NAME", '')
+os_username = os.environ.get("OS_USERNAME", '')
+os_password = os.environ.get("OS_PASSWORD", '')
+os_auth_url = os.environ.get("OS_AUTH_URL", '')
 
-while count < 100:
+working_directory = "/save/"
 
-    save_path = "/save/election%03d.gz" % count
 
-    if not os.path.exists(save_path):
+def worker(object_filename):
+    swift = swiftclient.client.Connection(auth_version='2',
+                                          user=os_username,
+                                          key=os_password,
+                                          tenant_name=os_tenant_name,
+                                          authurl=os_auth_url)
+    with open("%s%s" % (working_directory, object_filename), 'rb') as fo:
+        file_data = fo.read()
+    swift.put_object('twitter', object_filename, file_data)
+    print "%s uploaded to swift!" % object_filename
 
-        print "Start: data/election%03d" % count
+if __name__ == "__main__":
 
-        try:
-            key = boto3.resource('s3').Object("ucsd-twitter", "data/election%03d" % count)\
-                .get(RequestPayer='requester')
+    count = 1
 
-            with gzip.open(save_path, 'w') as f:
-                chunk = key['Body'].read(1024*8)
-                while chunk:
-                    f.write(chunk)
+    while count < 100:
+
+        filename = "election%03d.gz" % count
+        save_path = "%s%s" % (working_directory, filename)
+
+        if not os.path.exists(save_path):
+
+            print "Start: %s" % save_path
+
+            try:
+                key = boto3.resource('s3').Object("ucsd-twitter", "data/election%03d" % count)\
+                    .get(RequestPayer='requester')
+
+                with gzip.open(save_path, 'w') as f:
                     chunk = key['Body'].read(1024*8)
+                    while chunk:
+                        f.write(chunk)
+                        chunk = key['Body'].read(1024*8)
 
-            f.close()
-        except Exception as e:
-            print "Exception: %s" % e
+                f.close()
+            except Exception as e:
+                print "Exception: %s" % e
 
-        print "End: data/election%03d\n" % count
+            print "End: %s\n" % save_path
 
-    else:
-        print "%s exists, skipping!" % save_path
+            t = threading.Thread(target=worker, args=(filename,))
+            t.daemon = True
+            t.start()
+            t.join()
 
-    count += 1
+        else:
+            print "%s exists, skipping!" % save_path
+
+        count += 1
