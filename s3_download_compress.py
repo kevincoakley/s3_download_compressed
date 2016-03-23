@@ -21,7 +21,7 @@ def s3_object_exists(d_s3_object_path):
     # Try to load the metadata for the S3 object, return False if the request receives a file not
     # found error
     try:
-        boto3.resource('s3').Object(s3_bucket, d_s3_object_path).load()
+        boto3.resource('s3').Object(s3_bucket, d_s3_object_path).load(RequestPayer='requester')
     except boto_exception.ClientError as d_e:
         if d_e.response['Error']['Code'] == "404":
             exists = False
