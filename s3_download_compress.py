@@ -4,6 +4,7 @@ import os.path
 import threading
 import swiftclient.client
 from botocore import exceptions as boto_exception
+from swiftclient import exceptions as swift_exception
 
 os_tenant_name = os.environ.get("OS_TENANT_NAME", '')
 os_username = os.environ.get("OS_USERNAME", '')
@@ -12,6 +13,8 @@ os_auth_url = os.environ.get("OS_AUTH_URL", '')
 
 s3_bucket = "ucsd-twitter"
 s3_root = "data/"
+
+swift_container = "twitter"
 
 working_directory = "/save/"
 
@@ -33,6 +36,29 @@ def s3_object_exists(d_s3_object_path):
     return exists
 
 
+def swift_object_exists(d_filename):
+
+    swift = swiftclient.client.Connection(auth_version='2',
+                                          user=os_username,
+                                          key=os_password,
+                                          tenant_name=os_tenant_name,
+                                          authurl=os_auth_url)
+
+    # Try to load the metadata for the Swift object, return False if the request receives a file not
+    # found error
+    try:
+        swift.head_object(swift_container, d_filename)
+    except swift_exception.ClientException as d_e:
+        if d_e.http_status == 404:
+            exists = False
+        else:
+            raise d_e
+    else:
+        exists = True
+
+    return exists
+
+
 def worker(d_filename):
 
     local_path = "%s%s" % (working_directory, d_filename)
@@ -44,7 +70,7 @@ def worker(d_filename):
                                           authurl=os_auth_url)
     with open(local_path, 'rb') as fo:
         file_data = fo.read()
-    swift.put_object('twitter', d_filename, file_data)
+    swift.put_object(swift_container, d_filename, file_data)
     print "%s uploaded to swift!" % d_filename
 
     # Remove the file once uploaded to Swift and create a empty file in its place
@@ -66,8 +92,8 @@ if __name__ == "__main__":
         filename = "%s.gz" % s3_object_name
         save_path = "%s%s" % (working_directory, filename)
 
-        # Only try to download the S3 object if it doesn't exist on the local computer
-        if not os.path.exists(save_path):
+        # Only try to download the S3 object if it doesn't exist on the local computer or in Swift
+        if not os.path.exists(save_path) or not s3_object_exists(filename):
 
             # Check if the object exists in S3 before trying to download it
             if s3_object_exists(s3_object_path):
