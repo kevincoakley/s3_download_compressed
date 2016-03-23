@@ -1,7 +1,7 @@
 import boto3
 import gzip
 
-count = 0
+count = 1
 
 while count < 100:
     print "Start: data/election%03d" % count
